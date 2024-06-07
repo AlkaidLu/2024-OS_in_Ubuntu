@@ -70,11 +70,54 @@ sys_sleep(void)
 }
 
 
+
+/*
+void
+pgaccess_test()
+{
+  char *buf;
+  unsigned int abits;
+  printf("pgaccess_test starting\n");
+  testname = "pgaccess_test";
+  buf = malloc(32 * PGSIZE);
+  if (pgaccess(buf, 32, &abits) < 0)
+    err("pgaccess failed");
+  buf[PGSIZE * 1] += 1;
+  buf[PGSIZE * 2] += 1;
+  buf[PGSIZE * 30] += 1;
+  if (pgaccess(buf, 32, &abits) < 0)
+    err("pgaccess failed");
+  if (abits != ((1 << 1) | (1 << 2) | (1 << 30)))
+    err("incorrect access bits set");
+  free(buf);
+  printf("pgaccess_test: OK\n");
+}
+*/
 #ifdef LAB_PGTBL
 int
 sys_pgaccess(void)
 {
-  // lab pgtbl: your code here.
+
+  uint64 va;
+  int num;
+  uint64 abitsaddr;
+  argaddr(0, &va);
+  argint(1, &num);
+  argaddr(2, &abitsaddr);
+  uint64 maskbits = 0;
+  struct proc *proc = myproc();
+  for (int i = 0; i < num; i++) {
+    pte_t *pte = walk(proc->pagetable, va+i*PGSIZE, 0);
+    if (pte == 0)
+      panic("page not exist.");
+    if (PTE_FLAGS(*pte) & PTE_A) {
+      maskbits = maskbits | (1L << i);
+    }
+    // clear PTE_A, set PTE_A bits zero
+    *pte = ((*pte&PTE_A) ^ *pte) ^ 0 ;
+  }
+  if (copyout(proc->pagetable, abitsaddr, (char *)&maskbits, sizeof(maskbits)) < 0)
+    panic("sys_pgacess copyout error");
   return 0;
 }
 #endif

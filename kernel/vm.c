@@ -98,6 +98,7 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
       memset(pagetable, 0, PGSIZE);
       *pte = PA2PTE(pagetable) | PTE_V;
     }
+    
   }
   return &pagetable[PX(0, va)];
 }
