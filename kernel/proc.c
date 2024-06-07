@@ -124,7 +124,13 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
-
+    if((p->usyscallpage = (struct usyscall *)kalloc())==0){
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
+  p->usyscallpage->pid=p->pid;
+  
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
@@ -139,6 +145,7 @@ found:
     release(&p->lock);
     return 0;
   }
+  
 
   // Set up new context to start executing at forkret,
   // which returns to user space.
@@ -155,6 +162,9 @@ found:
 static void
 freeproc(struct proc *p)
 {
+  if(p->usyscallpage)
+    kfree((void*)p->usyscallpage);
+  p->usyscallpage=0;
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
@@ -182,7 +192,23 @@ proc_pagetable(struct proc *p)
   pagetable = uvmcreate();
   if(pagetable == 0)
     return 0;
+////////////////!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!//////////
+    // map the usyscallpage below trapframe
+    //mappages(pagetable_t pagetable,uint64 va,uint64 size,uint64 pa,int perm)
+    //*pte = PA2PTE(pa) | perm | PTE_V;
+//#define PTE_V (1L << 0) // valid
+//#define PTE_R (1L << 1)
+//#define PTE_W (1L << 2)
+//#define PTE_X (1L << 3)
+//#define PTE_U (1L << 4) // user can access
 
+// shift a physical address to the right place for a PTE.
+//#define PA2PTE(pa) ((((uint64)pa) >> 12) << 10)
+///////////////!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!////////////
+  if(mappages(pagetable, USYSCALL, PGSIZE, (uint64)(p->usyscallpage), PTE_R | PTE_U) < 0) {
+    uvmfree(pagetable, 0);
+    return 0;
+  }
   // map the trampoline code (for system call return)
   // at the highest user virtual address.
   // only the supervisor uses it, on the way
@@ -212,6 +238,7 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
 {
   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
   uvmunmap(pagetable, TRAPFRAME, 1, 0);
+  uvmunmap(pagetable,USYSCALL,1,0);
   uvmfree(pagetable, sz);
 }
 
