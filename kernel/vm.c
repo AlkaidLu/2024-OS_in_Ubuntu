@@ -449,3 +449,29 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+//Define a function called vmprint(). 
+//It should take a pagetable_t argument, and print that pagetable in the format described below. 
+//Insert if(p->pid==1) vmprint(p->pagetable) in exec.c just before the return argc, to print the first process's page table.
+// You receive full credit for this part of the lab if you pass the pte printout test of make grade.
+static int layer = 1;
+void
+vmprint(pagetable_t pagetable){
+  if(layer==1)
+    printf("page table %p\n",(uint64)pagetable);
+  //%p is used to print memory addresses in C
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+    if((pte & PTE_V)){
+    for(int j=0;j<layer;j++)
+      printf("..");
+    printf("%d: pte %p pa %p\n",i,(uint64)pte,(uint64)PTE2PA(pte));
+    }
+    if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
+      // this PTE points to a lower-level page table.
+      layer++;
+      uint64 child = PTE2PA(pte);
+      vmprint((pagetable_t)child);
+      layer--;
+    }
+  }
+}
