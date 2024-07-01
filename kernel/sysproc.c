@@ -91,3 +91,35 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+
+//after every n "ticks" of CPU time that the program consumes, the kernel should cause application function fn to be called.
+// When fn returns, the application should resume where it left off. 
+//If an application calls sigalarm(0, 0), the kernel should stop generating periodic alarm calls.
+uint64
+sys_sigalarm(void)
+{
+  int interval;
+  uint64 handler;
+  argint(0, &interval);
+  argaddr(1,&handler);
+  struct proc * p= myproc();
+  if(interval==0&&handler==0){
+    return -1;
+  }
+  p->if_returned = 1;
+  p->ticks=0;
+  p->handler=(void *)handler;
+  p->interval= interval;
+  return 0;
+}
+
+//sys_sigreturn
+uint64
+sys_sigreturn(void)
+{
+  struct proc * p= myproc();
+  *p->trapframe=*p->savedtrapframe;
+  p->if_returned=1;
+  return p->trapframe->a0;
+}

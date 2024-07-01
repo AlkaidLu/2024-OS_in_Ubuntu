@@ -104,4 +104,9 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  int interval;                 //interval 
+  void (*handler)();            //the function to be called in aya_sigalarm 
+  int ticks;                    //ticks
+  int if_returned;              //if returned from alarm
+  struct trapframe *savedtrapframe;//savedtrapframe
 };
